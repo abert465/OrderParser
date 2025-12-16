@@ -1,0 +1,51 @@
+Your task is to create a C# class (and subclasses) that can parse the provided text file into a class.
+The file format is listed below.
+Each order will have a single header records, a single address record, and one or more line items.
+The only way to know which address line and which line items belong to an order is by their order in the file.
+The C# class will be self contained meaning that it will contain both the data structure to hold the orders as well as have a method to parse the file.
+You should likley have a class named Orders, This class will have a list of "order" objects and a parsefile method.
+I have intentionally inserted a couple errors in the file such as an invalid amount as well as an invalid date.
+I would like to see each order have a boolean for success/failure and a string to store any error messages.
+Your app can be a windows Forms app or console app.
+
+
+
+
+Order Header Lines - One record per order
+------------------------------------
+Position	Length	Format				Value	Description
+0			3		Fixed				100		Line Type Identifier
+3			10		Numeric						Order number
+13			5		Numeric						Total Items
+18			10		Numeric	(#.00)				Total Cost
+28			19		MM/DD/YYYY hh:mm:ss			Order Date
+47			50		Text						Customer Name
+97			30		Text						Customer Phone
+127			50		Text						Customer Email
+177 		1		Boolean (0/1)				Paid
+178 		1		Boolean (0/1)				Shipped
+179 		1		Boolean (0/1)				Completed
+
+
+
+Address Lines - One record per order
+------------------------------------
+Position	Length	Format				Value	Description
+0			3		Fixed				200		Line Type Identifier
+3			50		Text						Address line 1
+53			50		Text						Address line 2
+103			50		Text						City
+153			2		Text						State
+155			10		Text						Zip
+
+
+
+Order Detail Lines - Multiple records per order
+------------------------------------
+Position	Length	Format				Value	Description
+0			3		Fixed				300		Line Type Identifier
+3			2		Numeric						Line number
+5			5		Numeric						Quantity
+10			10		Numeric	(#.00)				Cost each
+20			10		Numeric	(#.00)				Total Cost
+30			50		Text						Description
