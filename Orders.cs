@@ -22,8 +22,8 @@ public class Orders
         public bool IsCompleted;
         public Address Address = new Address();
         public List<OrderLineItem> LineItems = new List<OrderLineItem>();
-        public bool IsValid = true;
         public List<string> Errors = new List<string>();
+        public bool IsValid => Errors.Count == 0;
     }
 
     public class Address
@@ -155,19 +155,21 @@ public class Orders
 
         if (line.Length != 180)
         {
-            order.IsValid = false;
             order.Errors.Add("Header line must be exactly 180 characters.");
             return order;
         }
 
         // Position 3, Length 10 - Order number
         order.OrderNumber = line.Substring(3, 10).Trim();
+        if (string.IsNullOrWhiteSpace(order.OrderNumber) || !order.OrderNumber.All(char.IsDigit))
+        {
+            order.Errors.Add("Order number is invalid or empty.");
+        }
 
         // Position 13, Length 5 - Total Items
         string totalItemsStr = line.Substring(13, 5).Trim();
         if (!int.TryParse(totalItemsStr, out int totalItems))
         {
-            order.IsValid = false;
             order.Errors.Add("Invalid total items format.");
         }
         order.TotalItems = totalItems;
@@ -176,7 +178,6 @@ public class Orders
         string totalCostStr = line.Substring(18, 10).Trim();
         if (!decimal.TryParse(totalCostStr, out decimal totalCost))
         {
-            order.IsValid = false;
             order.Errors.Add("Invalid total cost format.");
         }
         order.TotalCost = totalCost;
@@ -186,7 +187,6 @@ public class Orders
         if (!DateTime.TryParseExact(orderDateStr, "MM/dd/yyyy HH:mm:ss",
             CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime orderDate))
         {
-            order.IsValid = false;
             order.Errors.Add("Invalid order date format.");
         }
         order.OrderDate = orderDate;
@@ -204,7 +204,6 @@ public class Orders
         string paidStr = line.Substring(177, 1);
         if (paidStr != "0" && paidStr != "1")
         {
-            order.IsValid = false;
             order.Errors.Add("Invalid paid flag (must be 0 or 1).");
         }
         order.IsPaid = paidStr == "1";
@@ -213,7 +212,6 @@ public class Orders
         string shippedStr = line.Substring(178, 1);
         if (shippedStr != "0" && shippedStr != "1")
         {
-            order.IsValid = false;
             order.Errors.Add("Invalid shipped flag (must be 0 or 1).");
         }
         order.IsShipped = shippedStr == "1";
@@ -222,7 +220,6 @@ public class Orders
         string completedStr = line.Substring(179, 1);
         if (completedStr != "0" && completedStr != "1")
         {
-            order.IsValid = false;
             order.Errors.Add("Invalid completed flag (must be 0 or 1).");
         }
         order.IsCompleted = completedStr == "1";
@@ -233,63 +230,48 @@ public class Orders
     // Validates all order fields and sets IsValid/Errors accordingly
     private void ValidateOrder(Order order)
     {
-        // Validate order number
-        if (string.IsNullOrWhiteSpace(order.OrderNumber) || !order.OrderNumber.All(char.IsDigit))
-        {
-            order.IsValid = false;
-            order.Errors.Add("Order number is invalid or empty.");
-        }
-
         // Validate total items
         if (order.TotalItems < 1)
         {
-            order.IsValid = false;
             order.Errors.Add("Total items must be >= 1.");
         }
 
         // Validate total cost
         if (order.TotalCost < 0)
         {
-            order.IsValid = false;
             order.Errors.Add("Total cost must be >= 0.");
         }
 
         // Validate customer name
         if (string.IsNullOrWhiteSpace(order.CustomerName))
         {
-            order.IsValid = false;
             order.Errors.Add("Customer name is required.");
         }
 
         // Validate address
         if (order.Address == null)
         {
-            order.IsValid = false;
             order.Errors.Add("Address is missing.");
         }
         else
         {
             if (string.IsNullOrWhiteSpace(order.Address.AddressLine1))
             {
-                order.IsValid = false;
                 order.Errors.Add("Address line 1 is required.");
             }
 
             if (string.IsNullOrWhiteSpace(order.Address.City))
             {
-                order.IsValid = false;
                 order.Errors.Add("City is required.");
             }
 
             if (string.IsNullOrWhiteSpace(order.Address.State) || order.Address.State.Length != 2)
             {
-                order.IsValid = false;
                 order.Errors.Add("State must be exactly 2 characters.");
             }
 
             if (string.IsNullOrWhiteSpace(order.Address.Zip))
             {
-                order.IsValid = false;
                 order.Errors.Add("Zip is required.");
             }
         }
@@ -297,7 +279,6 @@ public class Orders
         // Validate line items exist
         if (order.LineItems.Count == 0)
         {
-            order.IsValid = false;
             order.Errors.Add("Order must have at least one line item.");
         }
         else
@@ -307,31 +288,26 @@ public class Orders
             {
                 if (item.LineNumber <= 0)
                 {
-                    order.IsValid = false;
                     order.Errors.Add($"Line {item.LineNumber} has invalid line number.");
                 }
 
                 if (item.Quantity <= 0)
                 {
-                    order.IsValid = false;
                     order.Errors.Add($"Line {item.LineNumber} has invalid quantity.");
                 }
 
                 if (item.CostEach < 0)
                 {
-                    order.IsValid = false;
                     order.Errors.Add($"Line {item.LineNumber} has invalid cost each.");
                 }
 
                 if (item.TotalCost < 0)
                 {
-                    order.IsValid = false;
                     order.Errors.Add($"Line {item.LineNumber} has invalid total cost.");
                 }
 
                 if (string.IsNullOrWhiteSpace(item.Description))
                 {
-                    order.IsValid = false;
                     order.Errors.Add($"Line {item.LineNumber} has missing description.");
                 }
 
@@ -339,7 +315,6 @@ public class Orders
                 decimal calculatedTotal = item.Quantity * item.CostEach;
                 if (Math.Abs(calculatedTotal - item.TotalCost) > 0.01m)
                 {
-                    order.IsValid = false;
                     order.Errors.Add($"Line {item.LineNumber} total mismatch (qty * cost != total).");
                 }
             }
@@ -348,14 +323,12 @@ public class Orders
             int totalQuantity = order.LineItems.Sum(x => x.Quantity);
             if (totalQuantity != order.TotalItems)
             {
-                order.IsValid = false;
                 order.Errors.Add($"Total quantity ({totalQuantity}) does not match header total items ({order.TotalItems}).");
             }
 
             decimal sumLineItemTotals = order.LineItems.Sum(x => x.TotalCost);
             if (sumLineItemTotals != order.TotalCost)
             {
-                order.IsValid = false;
                 order.Errors.Add($"Sum of line items (${sumLineItemTotals:F2}) does not match header total (${order.TotalCost:F2}).");
             }
         }
